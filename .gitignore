@@ -1,0 +1,5 @@
+# Tai san trich tu game goc (ban quyen Marti Wong & Starsky Wong): tu tao bang tools/build_all.py
+/public/assets/
+
+__pycache__/
+*.pyc

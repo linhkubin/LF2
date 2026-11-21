@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Little Fighter 2 - web</title>
+<link rel="icon" href="data:,">
+<style>
+  :root { --bg: #0d1020; --panel: rgba(12, 18, 48, 0.94); --line: #3b4c9a; --hi: #ffd34d; }
+  * { box-sizing: border-box; }
+  body { background: #000; color: #e6e9ff; font: 14px system-ui, "Segoe UI", sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; }
+  #wrap { position: relative; width: 794px; height: 550px; margin-top: 10px; }
+  @media (min-width: 1300px) and (min-height: 900px) { #wrap { transform: scale(1.4); transform-origin: top center; margin-bottom: 230px; } }
+  #screen { width: 794px; height: 550px; image-rendering: pixelated; background: #000; outline: none; display: block; }
+  .overlay { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); }
+  .overlay.show { display: flex; }
+  .panel { background: var(--panel); border: 2px solid var(--line); border-radius: 6px; padding: 16px 20px; max-height: 530px; overflow: auto; }
+  h1 { margin: 0 0 12px; font-size: 22px; color: var(--hi); text-align: center; letter-spacing: 1px; }
+  h2 { margin: 0 0 10px; font-size: 18px; color: var(--hi); }
+  button { background: #22307a; color: #fff; border: 1px solid #5b6fd6; border-radius: 4px; padding: 7px 16px; font-size: 14px; cursor: pointer; }
+  button:hover, button:focus { background: #3346b0; outline: none; }
+  button.big { display: block; width: 240px; margin: 10px auto; padding: 12px; font-size: 18px; }
+  select { background: #101a4a; color: #fff; border: 1px solid #4a5bb8; border-radius: 3px; padding: 3px 4px; }
+  table { border-collapse: collapse; }
+  td, th { padding: 3px 6px; text-align: left; }
+  .rows td { border-bottom: 1px solid #263372; }
+  .face { width: 24px; height: 27px; image-rendering: pixelated; vertical-align: middle; background: #000; }
+  .rows td { padding: 2px 6px; }
+  .opts { display: flex; gap: 16px; margin: 12px 0; flex-wrap: wrap; }
+  .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; }
+  #status { color: #9fb0ff; min-height: 1.2em; margin: 8px; font-size: 13px; }
+  .hint { color: #8a93c0; font-size: 12px; max-width: 794px; text-align: center; margin: 6px; }
+  #help { width: 794px; margin: 4px 0 20px; }
+  #help .ctl { color: #c7cdf5; font-size: 13px; line-height: 1.9; }
+  kbd { display: inline-block; min-width: 20px; padding: 0 5px; border: 1px solid #5b6fd6; border-bottom-width: 2px; border-radius: 3px; background: #141c4a; color: #fff; font: 12px monospace; text-align: center; margin: 0 1px; }
+  #help h3 { margin: 10px 0 4px; color: var(--hi); font-size: 15px; }
+  #combo { width: 100%; }
+  #combo td, #combo th { border-bottom: 1px solid #263372; padding: 3px 8px; font-size: 13px; }
+  #combo td.keys { font: 14px monospace; color: #fff; white-space: nowrap; letter-spacing: 2px; }
+  #combo td.when { color: #8a93c0; font-size: 12px; }
+  #help .note { color: #8a93c0; font-size: 12px; margin-top: 4px; }
+  .bar { width: 300px; height: 10px; border: 1px solid #5b6fd6; margin: 10px auto; }
+  .bar > div { height: 100%; background: #5b6fd6; width: 0; }
+  .presets { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+  .presets button { padding: 4px 10px; font-size: 13px; }
+  .presets button.on { background: #b8892a; border-color: var(--hi); }
+  .lbl { color: #9fb0ff; font-size: 13px; }
+  #vs-teams { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0; min-height: 120px; }
+  .team { border: 1px solid #2c3a85; border-radius: 5px; padding: 6px; background: rgba(20,28,80,0.6); min-width: 168px; flex: 1; }
+  .team h4 { margin: 0 0 6px; font-size: 13px; color: var(--hi); }
+  .card { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+  .card canvas { width: 40px; height: 45px; image-rendering: pixelated; background: #000; border: 1px solid #263372; }
+  .card .col { display: flex; flex-direction: column; gap: 3px; }
+  .card select { width: 112px; }
+  .card .x { padding: 1px 6px; font-size: 12px; background: #5a1f2a; border-color: #a33; }
+  .card .me { color: var(--hi); font-size: 11px; font-weight: bold; }
+  .res td, .res th { border-bottom: 1px solid #263372; text-align: center; }
+  .win { color: #7f7; } .dead { color: #f77; }
+</style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="screen" width="794" height="550" tabindex="0"></canvas>
+
+    <div class="overlay show" id="ov-loading"><div class="panel" style="width:360px;text-align:center">
+      <h1>Little Fighter 2</h1><div id="load-text">Đang nạp...</div><div class="bar"><div id="load-bar"></div></div>
+    </div></div>
+
+    <div class="overlay" id="ov-menu"><div class="panel" style="width:340px">
+      <h1>Little Fighter 2</h1>
+      <button class="big" id="btn-vs">VS Mode</button>
+      <button class="big" id="btn-stage">Stage Mode</button>
+    </div></div>
+
+    <div class="overlay" id="ov-setup"><div class="panel" style="width:720px">
+      <h2 id="setup-title">VS Mode</h2>
+      <table class="rows"><thead><tr><th>#</th><th>Người chơi</th><th></th><th>Nhân vật</th><th class="vs-only">Đội</th></tr></thead><tbody id="setup-rows"></tbody></table>
+      <div class="opts">
+        <label>Độ khó <select id="opt-diff"><option value="2">Easy</option><option value="1" selected>Normal</option><option value="0">Difficult</option><option value="-1">CRAZY!</option></select></label>
+        <label class="vs-only">Nền <select id="opt-bg"></select></label>
+        <label class="stage-only">Bắt đầu từ <select id="opt-stage"></select></label>
+      </div>
+      <div class="actions"><button id="btn-back">Quay lại</button><button id="btn-start">Bắt đầu ▶</button></div>
+    </div></div>
+
+    <div class="overlay" id="ov-vs"><div class="panel" style="width:760px">
+      <h2>VS Mode</h2>
+      <div class="presets">
+        <span class="lbl">Đội hình:</span>
+        <button data-preset="1v1">1 đấu 1</button><button data-preset="2v2">2 đấu 2</button>
+        <button data-preset="3v3">3 đấu 3</button><button data-preset="4v4">4 đấu 4</button>
+        <button data-preset="ffa4">Hỗn chiến 4</button><button data-preset="ffa8">Hỗn chiến 8</button>
+      </div>
+      <div class="presets">
+        <button id="vs-random">🎲 Xáo nhân vật</button>
+        <label><input type="checkbox" id="vs-hidden"> Gồm nhân vật ẩn/quái</label>
+        <label><input type="checkbox" id="vs-join"> Tôi cùng chơi (ô đầu tiên, phím ← ↑ ↓ → C X Z)</label>
+      </div>
+      <div id="vs-teams"></div>
+      <div class="presets"><button id="vs-add">+ Thêm máy</button><span id="vs-count" class="lbl"></span></div>
+      <div class="opts">
+        <label>Độ khó máy <select id="vs-diff"><option value="2">Easy</option><option value="1">Normal</option><option value="0" selected>Difficult</option><option value="-1">CRAZY!</option></select></label>
+        <label>Nền <select id="vs-bg"></select></label>
+        <label>Tốc độ <select id="vs-speed"><option value="1">x1</option><option value="2">x2</option><option value="4">x4</option></select></label>
+        <label><input type="checkbox" id="vs-auto" checked> Tự động trận mới</label>
+        <label><input type="checkbox" id="vs-reroll" checked> Đổi nhân vật mỗi trận</label>
+      </div>
+      <div class="actions"><button id="vs-back">Quay lại</button><button id="vs-start">Bắt đầu ▶</button></div>
+    </div></div>
+
+    <div class="overlay" id="ov-result"><div class="panel" style="width:700px">
+      <h2 id="res-title">Kết quả</h2>
+      <div id="res-sub" style="margin-bottom:8px;color:#9fb0ff"></div>
+      <table class="res" style="width:100%"><thead><tr><th>Tên</th><th>Nhân vật</th><th>Kill</th><th>Attack</th><th>HP mất</th><th>MP dùng</th><th>Nhặt</th><th>Trạng thái</th></tr></thead><tbody id="res-rows"></tbody></table>
+      <div id="res-auto" style="color:#9fb0ff;margin-top:8px"></div>
+      <div class="actions"><button id="btn-menu">Menu chính</button><button id="btn-setup">Đổi thiết lập</button><button id="btn-again">Đấu lại</button><button id="btn-next">Trận mới ▶</button></div>
+    </div></div>
+  </div>
+  <div id="status"></div>
+  <div id="help">
+    <div class="ctl">
+      <b>Điều khiển:</b> <kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> di chuyển ·
+      <kbd>C</kbd> đánh · <kbd>X</kbd> nhảy · <kbd>Z</kbd> đỡ ·
+      bấm hướng 2 lần để chạy (đang chạy: <kbd>X</kbd> dash, <kbd>Z</kbd> lăn) ·
+      <kbd>F1</kbd> tạm dừng · <kbd>F4</kbd> thoát trận · <kbd>F3</kbd> gỡ lỗi
+    </div>
+    <h3 id="combo-title">Chiêu</h3>
+    <table id="combo"><thead><tr><th>Phím</th><th>Chiêu</th><th>Tốn</th><th></th></tr></thead><tbody id="combo-body"></tbody></table>
+    <div class="note" id="combo-note">→ là hướng nhân vật đang quay mặt (quay trái thì bấm ←). Bấm lần lượt từng phím, không cần giữ.</div>
+  </div>
+  <script>
+    if (location.protocol === "file:") {
+      document.getElementById("status").innerHTML =
+        "Trang này phải mở qua máy chủ web, không mở trực tiếp file. Chạy trong thư mục <b>web</b>: " +
+        "<code>python -m http.server 8765 --bind 127.0.0.1 --directory public</code> rồi mở " +
+        "<a href='http://localhost:8765' style='color:#8cf'>http://localhost:8765</a>.";
+      document.getElementById("status").style.color = "#f99";
+    }
+  </script>
+  <script type="module" src="src/main.js?v=3"></script>
+</body>
+</html>
